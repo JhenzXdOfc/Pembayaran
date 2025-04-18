@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembayaran Tabungan Semester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(160deg, #0F172A, #1E293B);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #6366F1, #3B82F6);
+            -webkit-background-clip: text;
+            color: transparent;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .input-field {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #3B82F6;
+            color: white;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .btn {
+            background: linear-gradient(135deg, #6366F1, #10B981);
+            padding: 1rem;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            width: 100%;
+            margin-top: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1 class="gradient-text">Pembayaran Tabungan liburan Semester 2</h1>
+        <p class="text-gray-400">Silakan masukkan nama Anda dan kirim pembayaran.</p>
+
+        <input type="text" id="namaInput" class="input-field" placeholder="Masukkan Nama Anda">
+
+        <button id="submitBtn" class="btn">Bayar IDR 15,000</button>
+    </div>
+
+    <script>
+        const STATIC_QRIS = "00020101021126610014COM.GO-JEK.WWW01189360091434544726030210G4544726030303UMI51440014ID.CO.QRIS.WWW0215ID10253721693220303UMI5204829953033605802ID5925adipanden mustiko, SIDOAR6008SIDOARJO61056121462070703A016304BF3D";
+        const NOMINAL = 15000;
+
+        function charCodeAt(str, index) {
+            return str.charCodeAt(index);
+        }
+
+        function ConvertCRC16(str) {
+            let crc = 0xFFFF;
+            const strlen = str.length;
+            
+            for (let c = 0; c < strlen; c++) {
+                crc ^= charCodeAt(str, c) << 8;
+                for (let i = 0; i < 8; i++) {
+                    if (crc & 0x8000) {
+                        crc = (crc << 1) ^ 0x1021;
+                    } else {
+                        crc = crc << 1;
+                    }
+                }
+            }
+            
+            let hex = (crc & 0xFFFF).toString(16).toUpperCase();
+            return hex.length === 3 ? '0' + hex : hex.padStart(4, '0');
+        }
+
+        function generateQRCode(text, linkWhatsApp) {
+            const qr = qrcode(0, 'M');
+            qr.addData(text);
+            qr.make();
+
+            Swal.fire({
+                title: 'Kode QR Siap!',
+                html: `
+                    <p>Scan untuk membayar.</p>
+                    <div>
+                        <img src="${qr.createDataURL(10)}" alt="Kode QR" class="mx-auto" style="max-width: 250px;">
+                    </div>
+                `,
+                confirmButtonText: 'Tutup',
+                background: '#1E293B',
+                color: '#FFFFFF'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.open(linkWhatsApp, '_blank');
+                }
+            });
+        }
+
+        function convertQRIS() {
+            const nama = document.getElementById('namaInput').value.trim();
+            const today = new Date().toLocaleDateString('id-ID');
+
+            if (!nama) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Input Tidak Valid',
+                    text: 'Masukkan nama Anda dengan benar.',
+                    confirmButtonColor: '#3B82F6'
+                });
+                return;
+            }
+
+            let qris = STATIC_QRIS.slice(0, -4);
+            let step1 = qris.replace("010211", "010212");
+            let step2 = step1.split("5802ID");
+            let uang = "54" + NOMINAL.toString().length.toString().padStart(2, '0') + NOMINAL;
+            uang += "5802ID";
+            const fix = step2[0].trim() + uang + step2[1].trim();
+            const finalQR = fix + ConvertCRC16(fix);
+
+            const pesan = encodeURIComponent(`Nama: ${nama}, Tanggal: ${today}, Nominal: IDR ${NOMINAL}`);
+            const nomorTujuan = '6285694699522';
+            const linkWhatsApp = `https://wa.me/${nomorTujuan}?text=${pesan}`;
+
+            generateQRCode(finalQR, linkWhatsApp);
+        }
+
+        document.getElementById('submitBtn').addEventListener('click', convertQRIS);
+    </script>
+</body>
+</html>
